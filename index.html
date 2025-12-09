@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electric Ivy</title>
+    
+    <!-- SEO & Metadata -->
+    <meta name="description" content="Electric Ivy is a real-time, interactive WebGL fractal explorer. Manipulate 3D geometric folds, rotation axes, and saturation to generate infinite, organic digital art.">
+    <meta name="keywords" content="Electric Ivy, fractal explorer, WebGL, shader art, generative art, Chris Pirillo, interactive visualization, raymarching, 3D fractal, digital art">
+    <meta name="author" content="Chris Pirillo">
+    <link rel="canonical" href="https://pirillo.com/arcade/electric-ivy.html">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://pirillo.com/arcade/electric-ivy.html">
+    <meta property="og:title" content="Electric Ivy">
+    <meta property="og:description" content="Explore infinite organic geometry in this real-time WebGL fractal shader experience.">
+    <meta property="og:image" content="https://pirillo.com/arcade/images/electric-ivy.png">
+    <meta property="og:site_name" content="Pirillo Arcade">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://pirillo.com/arcade/electric-ivy.html">
+    <meta name="twitter:title" content="Electric Ivy">
+    <meta name="twitter:description" content="Explore infinite organic geometry in this real-time WebGL fractal shader experience.">
+    <meta name="twitter:image" content="https://pirillo.com/arcade/images/electric-ivy.png">
+    <meta name="twitter:creator" content="@ChrisPirillo">
+    <meta name="twitter:site" content="@ChrisPirillo">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Electric Ivy",
+      "url": "https://pirillo.com/arcade/electric-ivy.html",
+      "image": "https://pirillo.com/arcade/images/electric-ivy.png",
+      "author": {
+        "@type": "Person",
+        "name": "Chris Pirillo",
+        "url": "https://pirillo.com/arcade/electric-ivy.html"
+      },
+      "description": "A real-time WebGL fractal shader explorer allowing users to manipulate 3D geometric parameters.",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Any",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
+
+    <!-- Performance Hints -->
+    <link rel="preconnect" href="https://www.googletagmanager.com">
+
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-1CQ4D3VQ3L"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-1CQ4D3VQ3L');
+    </script>
+
+    <style>
+        /* Critical CSS Inlined for Performance */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Fade Overlay */
+        #fade-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease-in-out;
+            z-index: 5; /* Above canvas, below UI */
+        }
+
+        /* UI Overlay */
+        #ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            pointer-events: none; /* Let clicks pass through to canvas where no UI exists */
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        /* Hamburger Button */
+        #menu-btn {
+            pointer-events: auto;
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            margin: 20px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        #menu-btn:hover {
+            background: rgba(50, 50, 50, 0.8);
+        }
+
+        #menu-btn span {
+            display: block;
+            width: 24px;
+            height: 2px;
+            background-color: #fff;
+            transition: 0.3s;
+        }
+
+        /* Configuration Panel */
+        #config-panel {
+            pointer-events: auto;
+            background: rgba(15, 15, 20, 0.85);
+            backdrop-filter: blur(10px);
+            width: 320px;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: -340px; /* Hidden by default */
+            transition: left 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            overflow-y: auto;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 10px 0 20px rgba(0,0,0,0.5);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #config-panel.open {
+            left: 0;
+        }
+
+        /* Scrollbar styling */
+        #config-panel::-webkit-scrollbar {
+            width: 6px;
+        }
+        #config-panel::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.3);
+        }
+        #config-panel::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+        }
+
+        h2 {
+            color: #fff;
+            margin-top: 40px; /* Space for close button */
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #ccc;
+            font-size: 0.9rem;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            color: #aaa;
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+        }
+
+        .control-group label span.val {
+            color: #4fd1c5;
+            font-family: monospace;
+        }
+
+        input[type=range] {
+            width: 100%;
+            -webkit-appearance: none;
+            background: transparent;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 14px;
+            width: 14px;
+            border-radius: 50%;
+            background: #4fd1c5;
+            cursor: pointer;
+            margin-top: -5px;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 2px;
+        }
+        
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        /* Checkbox styling */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        .checkbox-group input {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+
+        button#reset-btn {
+            background: #e53e3e;
+            color: white;
+            margin-bottom: 50px;
+            margin-top: 20px;
+        }
+
+        button#reset-btn:hover {
+            background: #c53030;
+        }
+
+        button#random-btn {
+            background: #805ad5;
+            color: white;
+            margin-top: 20px;
+        }
+
+        button#random-btn:hover {
+            background: #6b46c1;
+        }
+
+        /* New Export Button */
+        button#export-btn {
+            background: #319795; /* Teal */
+            color: white;
+        }
+
+        button#export-btn:hover {
+            background: #2c7a7b;
+        }
+
+        #close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            width: auto;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="glCanvas"></canvas>
+    <div id="fade-overlay"></div>
+
+    <!-- UI Container (Main) -->
+    <main id="ui-container">
+        <!-- Menu Toggle -->
+        <div id="menu-btn" onclick="toggleMenu()" role="button" aria-label="Toggle Settings Menu" tabindex="0">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+
+        <!-- Settings Aside -->
+        <aside id="config-panel" aria-label="Fractal Settings">
+            <button id="close-btn" onclick="toggleMenu()" aria-label="Close Menu">&times;</button>
+            <h2>Fractal Settings</h2>
+            
+            <div id="controls">
+                <!-- Controls injected by JS -->
+            </div>
+
+            <h3>Auto-Play</h3>
+            <div class="checkbox-group">
+                <input type="checkbox" id="auto-advance-check" onchange="toggleAutoAdvance()">
+                <label for="auto-advance-check">Auto-Randomize</label>
+            </div>
+            <div class="control-group">
+                <label>Interval (sec) <span class="val" id="val-auto-interval">5</span></label>
+                <input type="range" id="auto-interval-slider" min="2" max="30" step="1" value="5" oninput="updateAutoInterval(this.value)">
+            </div>
+
+            <h3>Actions</h3>
+            <button id="random-btn" onclick="randomizeWithFade()">Randomize Parameters</button>
+            <button id="export-btn" onclick="exportWallpaper()">Export 4K Wallpaper</button>
+            <button id="reset-btn" onclick="resetDefaults()">Reset to Original</button>
+        </aside>
+    </main>
+
+    <!-- SHADERS -->
+    <script id="vs" type="x-shader/x-vertex">
+        attribute vec4 position;
+        void main() {
+            gl_Position = position;
+        }
+    </script>
+
+    <script id="fs" type="x-shader/x-fragment">
+        precision highp float;
+
+        uniform vec2 resolution;
+        uniform float time;
+
+        // Parameter Uniforms
+        uniform vec3 u_offset;      // vec3(3, 4.3, 1.4)
+        uniform vec3 u_shift;       // vec3(3.7, 2, 2)
+        uniform vec3 u_rotAxis;     // NEW: Rotation Axis
+        uniform float u_slice;      // NEW: Z-Slice
+        uniform float u_saturation; // NEW: Global Saturation
+        
+        // Removed unstable radius uniforms, replaced with constants in main
+        
+        uniform float u_iter;       // 49
+        uniform float u_steps;      // 44
+        uniform float u_speed;      // 1.0
+        uniform float u_rotSpeed;   // 0.5
+        uniform float u_colorHue;   // 0.6
+        uniform float u_colorShift; // 0.07
+        // uniform float u_glow;    // REMOVED per user request
+        uniform float u_zoom;       // 2.0
+
+        mat3 rotate3D(float angle, vec3 axis) {
+            vec3 a = normalize(axis);
+            float s = sin(angle);
+            float c = cos(angle);
+            float oc = 1.0 - c;
+            return mat3(
+                oc * a.x * a.x + c,       oc * a.x * a.y - a.z * s, oc * a.x * a.z + a.y * s,
+                oc * a.x * a.y + a.z * s, oc * a.y * a.y + c,       oc * a.y * a.z - a.x * s,
+                oc * a.x * a.z - a.y * s, oc * a.y * a.z + a.x * s, oc * a.z * a.z + c
+            );
+        }
+
+        vec3 hsv(float h, float s, float v) {
+            vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+            vec3 p = abs(fract(vec3(h) + K.xyz) * 6.0 - K.www);
+            return v * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), s);
+        }
+
+        void main() {
+            vec2 r = resolution;
+            vec2 uv = (gl_FragCoord.xy - 0.5 * r) / r.y * u_zoom;
+            
+            float t = time * u_speed;
+            vec3 colorSum = vec3(0.0);
+            
+            float g = 0.0; 
+            float e = 0.0; 
+            float s = 0.0; 
+            
+            for(float j=0.0; j<100.0; j++){
+                if(j >= u_steps) break;
+
+                // NEW: u_slice controls the Z-depth slice
+                vec3 p = vec3(uv, g - u_slice);
+                
+                // NEW: Configurable Rotation Axis
+                p *= rotate3D(t * u_rotSpeed, vec3(u_rotAxis.x, u_rotAxis.y, cos(t * u_rotSpeed) * u_rotAxis.z));
+                
+                s = 2.0;
+                
+                for(int k=0; k<100; k++){
+                    if(float(k) >= u_iter) break;
+                    
+                    float dotP = dot(p, p);
+                    
+                    // FIXED: Hardcoded stable radius values to prevent noise
+                    // minRad = 1.0, fixRad = 9.0
+                    e = max(1.0, 9.0 / dotP);
+                    
+                    s *= e;
+                    p = u_offset - abs(abs(p) * e - u_shift);
+                }
+                
+                g += mod(length(p.zx), p.y) / s;
+                
+                float colorS = log2(s) / g;
+                
+                // Tone Mapping
+                float intensity = colorS / 10000.0; // Hardcoded glow divisor
+                intensity = clamp(intensity, 0.0, 1.0); 
+
+                // NEW: Apply saturation uniform
+                vec3 color = hsv(u_colorHue, e - j * u_colorShift, intensity);
+                // Desaturate based on u_saturation
+                float lum = dot(color, vec3(0.2126, 0.7152, 0.0722));
+                color = mix(vec3(lum), color, u_saturation);
+                
+                colorSum += color;
+            }
+            
+            gl_FragColor = vec4(colorSum, 1.0);
+        }
+    </script>
+
+    <script>
+        // --- Configuration Definition ---
+        const CONFIG = {
+            u_offset_x: { val: 3.0, min: 0.0, max: 10.0, step: 0.1, name: "Offset X", hidden: true },
+            u_offset_y: { val: 4.3, min: 2.0, max: 10.0, step: 0.1, name: "Offset Y" }, // Min set to 2.0
+            u_offset_z: { val: 1.4, min: 0.0, max: 10.0, step: 0.1, name: "Offset Z" },
+            
+            u_shift_x: { val: 3.7, min: 0.0, max: 10.0, step: 0.1, name: "Fold Shift X" },
+            u_shift_y: { val: 2.0, min: 0.0, max: 10.0, step: 0.1, name: "Fold Shift Y", hidden: true },
+            u_shift_z: { val: 2.0, min: 0.0, max: 10.0, step: 0.1, name: "Fold Shift Z" },
+            
+            // NEW: Rotation Axis Controls
+            u_rotAxis_x: { val: 4.0, min: 0.0, max: 10.0, step: 0.1, name: "Rot Axis X" },
+            u_rotAxis_y: { val: 4.0, min: 0.0, max: 10.0, step: 0.1, name: "Rot Axis Y" },
+            u_rotAxis_z: { val: 1.0, min: 0.0, max: 5.0, step: 0.1, name: "Rot Axis Z (Wobble)" },
+
+            // NEW: Slice and Saturation
+            u_slice: { val: 0.5, min: -5.0, max: 5.0, step: 0.1, name: "Z-Slice (Travel)", hidden: true },
+            u_saturation: { val: 1.0, min: 0.0, max: 2.0, step: 0.1, name: "Global Saturation" },
+            
+            // PERFORMANCE FIX: Reduced max values to prevent system slowdown
+            u_iter: { val: 49, min: 5, max: 50, step: 1, name: "Fractal Iterations" }, // Max reduced from 80 to 50
+            u_steps: { val: 44, min: 10, max: 60, step: 1, name: "Ray Steps" },         // Max reduced from 100 to 60
+            
+            u_speed: { val: 1.0, min: 0.0, max: 5.0, step: 0.1, name: "Time Speed" },
+            u_rotSpeed: { val: 0.5, min: 0.0, max: 2.0, step: 0.1, name: "Rotation Speed" },
+            u_zoom: { val: 2.0, min: 0.5, max: 5.0, step: 0.1, name: "Camera Zoom" },
+            
+            u_colorHue: { val: 0.6, min: 0.0, max: 1.0, step: 0.01, name: "Base Hue" },
+            u_colorShift: { val: 0.07, min: 0.0, max: 0.2, step: 0.001, name: "Hue Shift" }
+            // u_glow removed
+        };
+
+        // Copy of defaults for reset
+        const DEFAULTS = JSON.parse(JSON.stringify(CONFIG));
+        
+        // App State
+        let autoAdvance = false;
+        let autoInterval = 5000; // ms
+        let lastAutoTime = 0;
+        let isFading = false;
+
+        // --- WebGL Setup ---
+        const canvas = document.getElementById('glCanvas');
+        const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true }); // Enable preservation for screenshots if needed, though we handle it synchronously
+
+        if (!gl) {
+            alert('WebGL not supported');
+        }
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        const vsSource = document.getElementById('vs').text;
+        const fsSource = document.getElementById('fs').text;
+
+        const vs = createShader(gl, gl.VERTEX_SHADER, vsSource);
+        const fs = createShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+        if (!vs || !fs) {
+            console.error("Shader compilation failed. See logs above.");
+        } else {
+            const program = gl.createProgram();
+            gl.attachShader(program, vs);
+            gl.attachShader(program, fs);
+            gl.linkProgram(program);
+
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error(gl.getProgramInfoLog(program));
+            }
+
+            // Buffers
+            const positionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1,
+                 1, -1,
+                -1,  1,
+                -1,  1,
+                 1, -1,
+                 1,  1,
+            ]), gl.STATIC_DRAW);
+
+            // Locations
+            const positionLocation = gl.getAttribLocation(program, 'position');
+            const resolutionLocation = gl.getUniformLocation(program, 'resolution');
+            const timeLocation = gl.getUniformLocation(program, 'time');
+
+            // Uniform Cache
+            const uniformLocs = {};
+            // Updated groups to include new rotAxis
+            const vec3Groups = ['u_offset', 'u_shift', 'u_rotAxis']; 
+
+            function getUniformLocations() {
+                // Scalar uniforms
+                for (const key in CONFIG) {
+                    if (!key.endsWith('_x') && !key.endsWith('_y') && !key.endsWith('_z')) {
+                        uniformLocs[key] = gl.getUniformLocation(program, key);
+                    }
+                }
+                // Vector uniforms
+                vec3Groups.forEach(group => {
+                    uniformLocs[group] = gl.getUniformLocation(program, group);
+                });
+            }
+            getUniformLocations();
+
+            // --- UI Generation ---
+            const uiContainer = document.getElementById('controls');
+            
+            function createSlider(key, config) {
+                const div = document.createElement('div');
+                div.className = 'control-group';
+                
+                const label = document.createElement('label');
+                label.innerHTML = `${config.name} <span class="val" id="val-${key}">${config.val}</span>`;
+                
+                const input = document.createElement('input');
+                input.type = 'range';
+                input.min = config.min;
+                input.max = config.max;
+                input.step = config.step;
+                input.value = config.val;
+                
+                input.addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value);
+                    CONFIG[key].val = val;
+                    document.getElementById(`val-${key}`).textContent = val;
+                });
+
+                div.appendChild(label);
+                div.appendChild(input);
+                uiContainer.appendChild(div);
+            }
+
+            function initUI() {
+                uiContainer.innerHTML = '';
+                for (const key in CONFIG) {
+                    if (CONFIG[key].hidden) continue;
+                    createSlider(key, CONFIG[key]);
+                }
+            }
+
+            initUI();
+
+            function toggleMenu() {
+                document.getElementById('config-panel').classList.toggle('open');
+            }
+            window.toggleMenu = toggleMenu; // Make available to HTML onclick
+
+            // --- Auto Advance Logic ---
+            function toggleAutoAdvance() {
+                const checkbox = document.getElementById('auto-advance-check');
+                autoAdvance = checkbox.checked;
+                lastAutoTime = performance.now(); // Reset timer so it doesn't trigger immediately
+            }
+            window.toggleAutoAdvance = toggleAutoAdvance;
+
+            function updateAutoInterval(val) {
+                autoInterval = val * 1000;
+                document.getElementById('val-auto-interval').textContent = val;
+            }
+            window.updateAutoInterval = updateAutoInterval;
+
+            // --- Randomize Logic with Fade ---
+            async function randomizeWithFade() {
+                if (isFading) return; // Prevent double triggers
+                isFading = true;
+
+                const overlay = document.getElementById('fade-overlay');
+                
+                // Fade Out (Black screen)
+                overlay.style.opacity = '1';
+
+                // Wait for fade out transition (500ms matches CSS)
+                await new Promise(r => setTimeout(r, 500));
+
+                // Change Settings while invisible
+                randomizeSettings();
+                lastAutoTime = performance.now(); // Reset auto timer
+
+                // Short pause for dramatic effect
+                await new Promise(r => setTimeout(r, 100));
+
+                // Fade In (Reveal new fractal)
+                overlay.style.opacity = '0';
+                
+                // Wait for fade in to finish before allowing interaction again
+                await new Promise(r => setTimeout(r, 500));
+                isFading = false;
+            }
+            window.randomizeWithFade = randomizeWithFade;
+
+            function randomizeSettings() {
+                for (const key in CONFIG) {
+                    // Don't randomize hidden values or things user can't see
+                    if (CONFIG[key].hidden) continue;
+
+                    // KEY CHANGE: Skip randomizing speed so user setting persists
+                    if (key === 'u_speed') continue;
+
+                    const cfg = CONFIG[key];
+                    const range = cfg.max - cfg.min;
+                    
+                    // Generate random value
+                    let randomVal = Math.random() * range + cfg.min;
+                    
+                    // Snap to step
+                    const step = cfg.step || 0.01;
+                    randomVal = Math.round(randomVal / step) * step;
+
+                    // handle float precision issues
+                    const decimals = (step.toString().split('.')[1] || '').length;
+                    randomVal = parseFloat(randomVal.toFixed(decimals));
+
+                    CONFIG[key].val = randomVal;
+                }
+                initUI(); // Re-render sliders with new values
+            }
+            window.randomizeSettings = randomizeSettings;
+
+            // --- Interaction Logic ---
+            // Close on ESC key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    const panel = document.getElementById('config-panel');
+                    panel.classList.remove('open');
+                }
+            });
+
+            // Handle Click Interactions (Close menu OR Randomize)
+            document.addEventListener('click', (e) => {
+                const panel = document.getElementById('config-panel');
+                const btn = document.getElementById('menu-btn');
+                const isMenuOpen = panel.classList.contains('open');
+                
+                const clickedInsidePanel = panel.contains(e.target);
+                const clickedBtn = btn.contains(e.target);
+
+                if (clickedInsidePanel || clickedBtn) {
+                    // Clicks inside UI are handled normally
+                    return;
+                }
+
+                if (isMenuOpen) {
+                    // If menu is open and we clicked outside, close it
+                    panel.classList.remove('open');
+                } else {
+                    // If menu is closed and we clicked canvas, Randomize!
+                    randomizeWithFade();
+                }
+            });
+
+            function resetDefaults() {
+                for (const key in DEFAULTS) {
+                    CONFIG[key].val = DEFAULTS[key].val;
+                }
+                initUI(); // Re-render sliders to update positions
+            }
+            window.resetDefaults = resetDefaults;
+
+            // --- EXPORT FUNCTION ---
+            function exportWallpaper() {
+                // 1. Defined 4K resolution
+                const exportWidth = 3840;
+                const exportHeight = 2160;
+
+                // 2. Save current canvas size
+                const originalWidth = canvas.width;
+                const originalHeight = canvas.height;
+
+                // 3. Resize canvas to 4K
+                // We physically resize the canvas element to force WebGL to render at this resolution
+                canvas.width = exportWidth;
+                canvas.height = exportHeight;
+                gl.viewport(0, 0, exportWidth, exportHeight);
+
+                // 4. Calculate current time to match what user is seeing
+                const now = performance.now();
+                const currentTime = (now - startTime) * 0.001;
+
+                // 5. Draw the high-res frame synchronously
+                drawScene(currentTime);
+
+                // 6. Capture Data URL
+                // This works because we just drew to the buffer synchronously
+                const dataUrl = canvas.toDataURL('image/png');
+
+                // 7. Create download link
+                const link = document.createElement('a');
+                link.download = `Fractal_Export_${Date.now()}.png`;
+                link.href = dataUrl;
+                link.click();
+
+                // 8. Restore original size
+                canvas.width = originalWidth;
+                canvas.height = originalHeight;
+                gl.viewport(0, 0, originalWidth, originalHeight);
+                
+                // 9. Redraw immediately to avoid flicker
+                drawScene(currentTime);
+            }
+            window.exportWallpaper = exportWallpaper;
+
+            // --- Start Randomly ---
+            randomizeSettings();
+
+            // --- Render Loop ---
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            let startTime = performance.now();
+            lastAutoTime = performance.now(); // Init auto timer
+
+            // SEPARATED DRAW FUNCTION
+            // Allows us to call this manually for the screenshot export
+            function drawScene(currentTime) {
+                gl.useProgram(program);
+
+                gl.enableVertexAttribArray(positionLocation);
+                gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+                gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+                // Standard Uniforms
+                // Note: Uses current canvas dimensions (which might be 4K during export)
+                gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+                gl.uniform1f(timeLocation, currentTime);
+
+                // Dynamic Config Uniforms
+                // Handle Vector 3s
+                vec3Groups.forEach(group => {
+                    gl.uniform3f(uniformLocs[group], 
+                        CONFIG[`${group}_x`].val, 
+                        CONFIG[`${group}_y`].val, 
+                        CONFIG[`${group}_z`].val
+                    );
+                });
+
+                // Handle Scalars
+                for (const key in CONFIG) {
+                    if (!key.endsWith('_x') && !key.endsWith('_y') && !key.endsWith('_z')) {
+                        gl.uniform1f(uniformLocs[key], CONFIG[key].val);
+                    }
+                }
+
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+            }
+
+            function render() {
+                const now = performance.now();
+                const currentTime = (now - startTime) * 0.001;
+
+                // Handle Auto Advance
+                if (autoAdvance && !isFading) {
+                    if (now - lastAutoTime > autoInterval) {
+                        randomizeWithFade();
+                    }
+                }
+
+                drawScene(currentTime);
+
+                requestAnimationFrame(render);
+            }
+
+            render();
+        }
+
+    </script>
+</body>
+</html>
